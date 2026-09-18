@@ -168,7 +168,7 @@ function SceneContents({
 
   const backdropColor = isDark ? '#334155' : '#94a3b8'
   const floorColor = isDark ? '#0f172a' : '#e2e8f0'
-  const showFloor = isDark
+  const showFloor = true
 
   return (
     <Selection>
