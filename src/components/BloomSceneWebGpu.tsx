@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Leva, useControls } from 'leva'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
-import { emissive, mrt, output, pass } from 'three/tsl'
+import { emissive, mrt, output, pass, vec4 } from 'three/tsl'
 import { Color, RenderPipeline, Vector3 } from 'three/webgpu'
 import type { ColorRepresentation, Mesh } from 'three/webgpu'
 import { bloomIntensityToDomOpacity, bloomRadiusToDomCss } from '../lib/bloomDomSync'
@@ -57,7 +57,11 @@ function WebGpuBloomPipeline({
       const bloomPass = bloom(emissivePass, intensity, radius, threshold)
 
       pipeline = new RenderPipeline(renderer)
-      pipeline.outputNode = scenePassColor.add(bloomPass)
+      // Bloom blur is vec4(rgb, 1); adding vec4s would force alpha 1 on empty pixels (black canvas).
+      pipeline.outputNode = vec4(
+        scenePassColor.rgb.add(bloomPass.rgb),
+        scenePassColor.a,
+      )
       pipeline.needsUpdate = true
 
       set({ renderPipeline: pipeline })
@@ -208,7 +212,7 @@ function SceneContents({
 
   const backdropColor = isDark ? '#334155' : '#94a3b8'
   const floorColor = isDark ? '#0f172a' : '#e2e8f0'
-  const showFloor = domGlowRef ? isDark : true
+  const showFloor = isDark
 
   return (
     <>

@@ -32,7 +32,7 @@ function BloomWebgpuPage() {
       </div>
 
       <section
-        className="demo-panel overflow-hidden bg-white p-0 dark:border-teal-900/40 dark:bg-slate-950/40"
+        className="demo-panel demo-panel-canvas overflow-hidden p-0"
         aria-label="Bloom canvas"
       >
         <div className="relative isolate h-[min(70vh,520px)] w-full">
