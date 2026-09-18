@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Leva, useControls } from 'leva'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
-import { emissive, mrt, output, pass, vec4 } from 'three/tsl'
+import { Fn, emissive, luminance, max, mrt, output, pass, vec4 } from 'three/tsl'
 import { Color, RenderPipeline, Vector3 } from 'three/webgpu'
 import type { ColorRepresentation, Mesh } from 'three/webgpu'
 import { bloomIntensityToDomOpacity, bloomRadiusToDomCss } from '../lib/bloomDomSync'
@@ -29,10 +29,12 @@ function WebGpuBloomPipeline({
   intensity,
   radius,
   threshold,
+  smoothing,
 }: {
   intensity: number
   radius: number
   threshold: number
+  smoothing: number
 }) {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
@@ -55,13 +57,16 @@ function WebGpuBloomPipeline({
       const scenePassColor = scenePass.getTextureNode('output')
       const emissivePass = scenePass.getTextureNode('emissive')
       const bloomPass = bloom(emissivePass, intensity, radius, threshold)
+      bloomPass.smoothWidth.value = smoothing
 
       pipeline = new RenderPipeline(renderer)
-      // Bloom blur is vec4(rgb, 1); adding vec4s would force alpha 1 on empty pixels (black canvas).
-      pipeline.outputNode = vec4(
-        scenePassColor.rgb.add(bloomPass.rgb),
-        scenePassColor.a,
-      )
+      // Bloom mips use alpha 1; scene-only alpha hides halos over transparent canvas (premultiplied output).
+      pipeline.outputNode = Fn(() => {
+        const rgb = scenePassColor.rgb.add(bloomPass.rgb)
+        const bloomAlpha = luminance(bloomPass.rgb)
+        const alpha = max(scenePassColor.a, bloomAlpha).clamp(0, 1)
+        return vec4(rgb, alpha)
+      })()
       pipeline.needsUpdate = true
 
       set({ renderPipeline: pipeline })
@@ -74,7 +79,7 @@ function WebGpuBloomPipeline({
       set({ renderPipeline: null })
       pipeline?.dispose()
     }
-  }, [camera, intensity, isLegacy, radius, renderer, scene, set, threshold])
+  }, [camera, intensity, isLegacy, radius, renderer, scene, set, smoothing, threshold])
 
   return null
 }
@@ -172,7 +177,7 @@ function InteractiveBloomBox({
       <meshStandardMaterial
         color={color}
         emissive={emissive}
-        emissiveIntensity={hovered ? hoverEmissive : 0}
+        emissiveIntensity={hovered ? hoverEmissive : 0.08}
         metalness={0.25}
         roughness={0.4}
       />
@@ -221,6 +226,7 @@ function SceneContents({
         intensity={bloom.intensity}
         radius={bloom.radius}
         threshold={bloom.luminanceThreshold}
+        smoothing={bloom.luminanceSmoothing}
       />
       {domGlowRef ? (
         <DomGlowTracker
