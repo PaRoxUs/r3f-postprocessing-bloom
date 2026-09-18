@@ -3,20 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Leva, useControls } from 'leva'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
-import {
-  Fn,
-  emissive,
-  float,
-  luminance,
-  max,
-  mix,
-  mrt,
-  output,
-  pass,
-  step,
-  uniform,
-  vec4,
-} from 'three/tsl'
+import { Fn, emissive, float, luminance, max, mrt, output, pass, smoothstep, vec4 } from 'three/tsl'
 import { Color, RenderPipeline, Vector3 } from 'three/webgpu'
 import type { ColorRepresentation, Mesh } from 'three/webgpu'
 import { bloomIntensityToDomOpacity, bloomRadiusToDomCss } from '../lib/bloomDomSync'
@@ -27,12 +14,6 @@ export type BloomSceneWebGpuProps = {
 }
 
 const BLOOM_COLOR = '#facc15'
-
-/** Matches `--bg-base` in styles.css so halo pixels tone-map like mesh + bloom. */
-const PAGE_BG = {
-  light: '#e7f3ec',
-  dark: '#0a1418',
-} as const
 
 function useBloomSettings() {
   return useControls('Bloom', {
@@ -49,13 +30,11 @@ function WebGpuBloomPipeline({
   radius,
   threshold,
   smoothing,
-  isDark,
 }: {
   intensity: number
   radius: number
   threshold: number
   smoothing: number
-  isDark: boolean
 }) {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
@@ -80,17 +59,14 @@ function WebGpuBloomPipeline({
       const bloomPass = bloom(emissivePass, intensity, radius, threshold)
       bloomPass.smoothWidth.value = smoothing
 
-      const pageBg = uniform(new Color(isDark ? PAGE_BG.dark : PAGE_BG.light))
-
       pipeline = new RenderPipeline(renderer)
       // renderOutput unpremultiplies first — output premultiplied straight rgb + coverage alpha.
       pipeline.outputNode = Fn(() => {
+        const straightRgb = scenePassColor.rgb.add(bloomPass.rgb)
         const bloomAlpha = luminance(bloomPass.rgb)
-        const alpha = max(scenePassColor.a, bloomAlpha).clamp(0, 1)
-        const meshRgb = scenePassColor.rgb.add(bloomPass.rgb)
-        const skyRgb = pageBg.add(bloomPass.rgb)
-        const hasScene = step(float(0.001), scenePassColor.a)
-        const straightRgb = mix(skyRgb, meshRgb, hasScene)
+        // Blur tails are non-zero everywhere; gate alpha so clear areas stay transparent.
+        const bloomCoverage = smoothstep(float(0.004), float(0.028), bloomAlpha)
+        const alpha = max(scenePassColor.a, bloomCoverage).clamp(0, 1)
         return vec4(straightRgb.mul(alpha), alpha)
       })()
       pipeline.needsUpdate = true
@@ -105,7 +81,7 @@ function WebGpuBloomPipeline({
       set({ renderPipeline: null })
       pipeline?.dispose()
     }
-  }, [camera, intensity, isDark, isLegacy, radius, renderer, scene, set, smoothing, threshold])
+  }, [camera, intensity, isLegacy, radius, renderer, scene, set, smoothing, threshold])
 
   return null
 }
@@ -253,7 +229,6 @@ function SceneContents({
         radius={bloom.radius}
         threshold={bloom.luminanceThreshold}
         smoothing={bloom.luminanceSmoothing}
-        isDark={isDark}
       />
       {domGlowRef ? (
         <DomGlowTracker
