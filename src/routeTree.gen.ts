@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BloomWebglRouteImport } from './routes/bloom-webgl'
+import { Route as BloomWebgpuRouteImport } from './routes/bloom-webgpu'
+import { Route as BloomWebgpuCanvasRouteImport } from './routes/bloom-webgpu-canvas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +24,50 @@ const BloomWebglRoute = BloomWebglRouteImport.update({
   path: '/bloom-webgl',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BloomWebgpuRoute = BloomWebgpuRouteImport.update({
+  id: '/bloom-webgpu',
+  path: '/bloom-webgpu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BloomWebgpuCanvasRoute = BloomWebgpuCanvasRouteImport.update({
+  id: '/bloom-webgpu-canvas',
+  path: '/bloom-webgpu-canvas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bloom-webgl': typeof BloomWebglRoute
+  '/bloom-webgpu': typeof BloomWebgpuRoute
+  '/bloom-webgpu-canvas': typeof BloomWebgpuCanvasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bloom-webgl': typeof BloomWebglRoute
+  '/bloom-webgpu': typeof BloomWebgpuRoute
+  '/bloom-webgpu-canvas': typeof BloomWebgpuCanvasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bloom-webgl': typeof BloomWebglRoute
+  '/bloom-webgpu': typeof BloomWebgpuRoute
+  '/bloom-webgpu-canvas': typeof BloomWebgpuCanvasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/bloom-webgl'
+  fullPaths: '/' | '/bloom-webgl' | '/bloom-webgpu' | '/bloom-webgpu-canvas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/bloom-webgl'
-  id: '__root__' | '/' | '/bloom-webgl'
+  to: '/' | '/bloom-webgl' | '/bloom-webgpu' | '/bloom-webgpu-canvas'
+  id:
+    '__root__' | '/' | '/bloom-webgl' | '/bloom-webgpu' | '/bloom-webgpu-canvas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BloomWebglRoute: typeof BloomWebglRoute
+  BloomWebgpuRoute: typeof BloomWebgpuRoute
+  BloomWebgpuCanvasRoute: typeof BloomWebgpuCanvasRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +86,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BloomWebglRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bloom-webgpu': {
+      id: '/bloom-webgpu'
+      path: '/bloom-webgpu'
+      fullPath: '/bloom-webgpu'
+      preLoaderRoute: typeof BloomWebgpuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bloom-webgpu-canvas': {
+      id: '/bloom-webgpu-canvas'
+      path: '/bloom-webgpu-canvas'
+      fullPath: '/bloom-webgpu-canvas'
+      preLoaderRoute: typeof BloomWebgpuCanvasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BloomWebglRoute: BloomWebglRoute,
+  BloomWebgpuRoute: BloomWebgpuRoute,
+  BloomWebgpuCanvasRoute: BloomWebgpuCanvasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
