@@ -1,87 +1,59 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { ClientOnly } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { lazy, Suspense, useCallback, useRef, useState } from 'react'
+import BloomDomGlow from '../components/BloomDomGlow'
+import BloomThemeSwitcher from '../components/BloomThemeSwitcher'
+import CanvasPlaceholder from '../components/CanvasPlaceholder'
 
-export const Route = createFileRoute('/')({ component: App })
+const BloomScene = lazy(() => import('../components/BloomScene'))
 
-function App() {
+export const Route = createFileRoute('/')({
+  component: BloomPage,
+})
+
+function BloomPage() {
+  const [isDark, setIsDark] = useState(false)
+  const domGlowRef = useRef<HTMLDivElement>(null)
+  const onThemeChange = useCallback((theme: 'light' | 'dark') => {
+    setIsDark(theme === 'dark')
+  }, [])
+
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
-        <p className="island-kicker mb-3">TanStack Start Base Template</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl leading-[1.02] font-bold tracking-tight text-[var(--sea-ink)] sm:text-6xl">
-          Start simple, ship quickly.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-[var(--sea-ink-soft)] sm:text-lg">
-          This base starter intentionally keeps things light: two routes, clean
-          structure, and the essentials you need to build from scratch.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/about"
-            className="rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.14)] px-5 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(79,184,178,0.24)]"
-          >
-            About This Starter
-          </a>
-          <a
-            href="https://tanstack.com/router"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-[rgba(23,58,64,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(23,58,64,0.35)]"
-          >
-            Router Guide
-          </a>
+    <main className="demo-page demo-page-wide px-4 pb-10 pt-8">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="island-kicker mb-2">React Three Fiber</p>
+          <h1 className="demo-title">Postprocessing bloom</h1>
+          <p className="demo-muted mt-3 max-w-xl text-sm sm:text-base">
+            Selective bloom on hover with a CSS glow on the panel behind the
+            active box. Tune the effect in Leva.
+          </p>
+        </div>
+        <BloomThemeSwitcher onThemeChange={onThemeChange} />
+      </div>
+
+      <section
+        className="demo-panel overflow-hidden bg-white p-0 dark:border-teal-900/40 dark:bg-slate-950/40"
+        aria-label="Bloom canvas"
+      >
+        <div className="relative isolate h-[min(70vh,520px)] w-full">
+          <BloomDomGlow ref={domGlowRef} isDark={isDark} />
+          <div className="absolute inset-0 z-[1]">
+            <ClientOnly fallback={<CanvasPlaceholder isDark={isDark} />}>
+              <Suspense fallback={<CanvasPlaceholder isDark={isDark} />}>
+                <BloomScene isDark={isDark} domGlowRef={domGlowRef} />
+              </Suspense>
+            </ClientOnly>
+          </div>
         </div>
       </section>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          [
-            'Type-Safe Routing',
-            'Routes and links stay in sync across every page.',
-          ],
-          [
-            'Server Functions',
-            'Call server code from your UI without creating API boilerplate.',
-          ],
-          [
-            'Streaming by Default',
-            'Ship progressively rendered responses for faster experiences.',
-          ],
-          [
-            'Tailwind Native',
-            'Design quickly with utility-first styling and reusable tokens.',
-          ],
-        ].map(([title, desc], index) => (
-          <article
-            key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-5"
-            style={{ animationDelay: `${index * 90 + 80}ms` }}
-          >
-            <h2 className="mb-2 text-base font-semibold text-[var(--sea-ink)]">
-              {title}
-            </h2>
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{desc}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="island-shell mt-8 rounded-2xl p-6">
-        <p className="island-kicker mb-2">Quick Start</p>
-        <ul className="m-0 list-disc space-y-2 pl-5 text-sm text-[var(--sea-ink-soft)]">
-          <li>
-            Edit <code>src/routes/index.tsx</code> to customize the home page.
-          </li>
-          <li>
-            Update <code>src/components/Header.tsx</code> and{' '}
-            <code>src/components/Footer.tsx</code> for brand links.
-          </li>
-          <li>
-            Add routes in <code>src/routes</code> and tweak visual tokens in{' '}
-            <code>src/styles.css</code>.
-          </li>
-        </ul>
-      </section>
+      <p className="demo-muted mt-4 text-center text-xs sm:text-sm">
+        Drag to orbit ·{' '}
+        <Link to="/bloom-webgl" className="font-semibold no-underline">
+          WebGL-only version
+        </Link>
+      </p>
     </main>
   )
 }

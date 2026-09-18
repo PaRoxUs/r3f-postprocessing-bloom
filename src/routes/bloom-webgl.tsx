@@ -1,7 +1,8 @@
 import { ClientOnly } from '@tanstack/react-router'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { lazy, Suspense, useCallback, useState } from 'react'
 import BloomThemeSwitcher from '../components/BloomThemeSwitcher'
+import CanvasPlaceholder from '../components/CanvasPlaceholder'
 
 const BloomScene = lazy(() => import('../components/BloomScene'))
 
@@ -22,8 +23,7 @@ function BloomWebglPage() {
           <p className="island-kicker mb-2">React Three Fiber</p>
           <h1 className="demo-title">WebGL bloom only</h1>
           <p className="demo-muted mt-3 max-w-xl text-sm sm:text-base">
-            Same selective postprocessing bloom demo without the CSS panel glow.
-            Hover the boxes and tune the effect in Leva.
+            Same selective postprocessing bloom without the CSS panel glow.
           </p>
         </div>
         <BloomThemeSwitcher onThemeChange={onThemeChange} />
@@ -44,22 +44,10 @@ function BloomWebglPage() {
 
       <p className="demo-muted mt-4 text-center text-xs sm:text-sm">
         Drag to orbit ·{' '}
-        <a href="/bloom" className="font-semibold no-underline">
-          Compare with CSS glow version
-        </a>
+        <Link to="/" className="font-semibold no-underline">
+          Bloom with CSS glow
+        </Link>
       </p>
     </main>
-  )
-}
-
-function CanvasPlaceholder({ isDark }: { isDark: boolean }) {
-  return (
-    <div
-      className={`flex h-full w-full items-center justify-center bg-transparent text-sm font-medium ${
-        isDark ? 'text-slate-400' : 'text-slate-600'
-      }`}
-    >
-      Loading canvas…
-    </div>
   )
 }
