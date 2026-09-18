@@ -3,14 +3,20 @@ export function bloomRadiusToDomCss(
   radius: number,
   containerWidth: number,
   containerHeight: number,
+  isDark: boolean,
 ) {
   const minDim = Math.min(containerWidth, containerHeight)
   const clamped = Math.min(1, Math.max(0, radius))
+  const lightBoost = isDark ? 1 : 1.18
 
-  // Tuned so radius ≈ 0.85 matches the previous fixed ~280px spot + ~48px blur.
-  const size = minDim * (0.1 + clamped * 0.42)
-  const blur = minDim * (0.012 + clamped * 0.082)
-  const falloff = 52 + clamped * 22
+  const size = minDim * (0.1 + clamped * 0.42) * lightBoost
+  const blur = minDim * (0.012 + clamped * 0.082) * lightBoost
+  const falloff = (isDark ? 52 : 58) + clamped * 22
 
   return { size, blur, falloff }
+}
+
+export function bloomIntensityToDomOpacity(intensity: number, isDark: boolean) {
+  const normalized = intensity / 1.35
+  return Math.min(1, normalized * (isDark ? 0.92 : 1.12))
 }

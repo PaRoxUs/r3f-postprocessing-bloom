@@ -1,18 +1,16 @@
 import { ClientOnly } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
-import { lazy, Suspense, useCallback, useRef, useState } from 'react'
-import BloomDomGlow from '../components/BloomDomGlow'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import BloomThemeSwitcher from '../components/BloomThemeSwitcher'
 
 const BloomScene = lazy(() => import('../components/BloomScene'))
 
-export const Route = createFileRoute('/bloom')({
-  component: BloomExamplePage,
+export const Route = createFileRoute('/bloom-webgl')({
+  component: BloomWebglPage,
 })
 
-function BloomExamplePage() {
+function BloomWebglPage() {
   const [isDark, setIsDark] = useState(false)
-  const domGlowRef = useRef<HTMLDivElement>(null)
   const onThemeChange = useCallback((theme: 'light' | 'dark') => {
     setIsDark(theme === 'dark')
   }, [])
@@ -22,33 +20,33 @@ function BloomExamplePage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="island-kicker mb-2">React Three Fiber</p>
-          <h1 className="demo-title">Postprocessing bloom</h1>
+          <h1 className="demo-title">WebGL bloom only</h1>
           <p className="demo-muted mt-3 max-w-xl text-sm sm:text-base">
-            Hover the two front boxes for selective WebGL bloom plus a CSS glow
-            on the panel behind the hovered box. Use Leva to tune the 3D bloom.
+            Same selective postprocessing bloom demo without the CSS panel glow.
+            Hover the boxes and tune the effect in Leva.
           </p>
         </div>
         <BloomThemeSwitcher onThemeChange={onThemeChange} />
       </div>
 
       <section
-        className="demo-panel overflow-hidden bg-white p-0 dark:border-teal-900/40 dark:bg-slate-950/40"
+        className="demo-panel overflow-hidden p-0 dark:border-teal-900/40 dark:bg-slate-950/40"
         aria-label="Bloom canvas"
       >
-        <div className="relative isolate h-[min(70vh,520px)] w-full">
-          <BloomDomGlow ref={domGlowRef} isDark={isDark} />
-          <div className="absolute inset-0 z-[1]">
-            <ClientOnly fallback={<CanvasPlaceholder isDark={isDark} />}>
-              <Suspense fallback={<CanvasPlaceholder isDark={isDark} />}>
-                <BloomScene isDark={isDark} domGlowRef={domGlowRef} />
-              </Suspense>
-            </ClientOnly>
-          </div>
+        <div className="h-[min(70vh,520px)] w-full">
+          <ClientOnly fallback={<CanvasPlaceholder isDark={isDark} />}>
+            <Suspense fallback={<CanvasPlaceholder isDark={isDark} />}>
+              <BloomScene isDark={isDark} />
+            </Suspense>
+          </ClientOnly>
         </div>
       </section>
 
       <p className="demo-muted mt-4 text-center text-xs sm:text-sm">
-        Drag to orbit · Bloom activates on pointer hover
+        Drag to orbit ·{' '}
+        <a href="/bloom" className="font-semibold no-underline">
+          Compare with CSS glow version
+        </a>
       </p>
     </main>
   )

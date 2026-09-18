@@ -9,7 +9,7 @@ import {
 import { Leva, useControls } from 'leva'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { ColorRepresentation, DirectionalLight, Mesh, PointLight } from 'three'
-import { bloomRadiusToDomCss } from '../lib/bloomDomSync'
+import { bloomIntensityToDomOpacity, bloomRadiusToDomCss } from '../lib/bloomDomSync'
 import { Color, Vector3 } from 'three'
 
 export type BloomSceneProps = {
@@ -34,10 +34,14 @@ function DomGlowTracker({
   domGlowRef,
   hoveredMeshRef,
   bloomRadius,
+  bloomIntensity,
+  isDark,
 }: {
   domGlowRef?: RefObject<HTMLDivElement | null>
   hoveredMeshRef: RefObject<Mesh | null>
   bloomRadius: number
+  bloomIntensity: number
+  isDark: boolean
 }) {
   const worldPosition = useMemo(() => new Vector3(), [])
   const wasVisible = useRef(false)
@@ -49,7 +53,12 @@ function DomGlowTracker({
     }
 
     const { width, height } = glow.getBoundingClientRect()
-    const { size, blur, falloff } = bloomRadiusToDomCss(bloomRadius, width, height)
+    const { size, blur, falloff } = bloomRadiusToDomCss(
+      bloomRadius,
+      width,
+      height,
+      isDark,
+    )
     glow.style.setProperty('--glow-size', `${size}px`)
     glow.style.setProperty('--glow-blur', `${blur}px`)
     glow.style.setProperty('--glow-falloff', `${falloff}%`)
@@ -71,7 +80,7 @@ function DomGlowTracker({
 
     glow.style.setProperty('--glow-x', `${x}%`)
     glow.style.setProperty('--glow-y', `${y}%`)
-    glow.style.opacity = '1'
+    glow.style.opacity = String(bloomIntensityToDomOpacity(bloomIntensity, isDark))
     wasVisible.current = true
   })
 
@@ -87,7 +96,7 @@ function InteractiveBloomBox({
   position: [number, number, number]
   color: ColorRepresentation
   hoverEmissive: number
-  hoveredMeshRef: RefObject<Mesh | null>
+  hoveredMeshRef?: RefObject<Mesh | null>
 }) {
   const [hovered, setHovered] = useState(false)
   const meshRef = useRef<Mesh>(null)
@@ -101,12 +110,14 @@ function InteractiveBloomBox({
         onPointerOver={(event) => {
           event.stopPropagation()
           setHovered(true)
-          hoveredMeshRef.current = meshRef.current
+          if (hoveredMeshRef) {
+            hoveredMeshRef.current = meshRef.current
+          }
           document.body.style.cursor = 'pointer'
         }}
         onPointerOut={() => {
           setHovered(false)
-          if (hoveredMeshRef.current === meshRef.current) {
+          if (hoveredMeshRef && hoveredMeshRef.current === meshRef.current) {
             hoveredMeshRef.current = null
           }
           document.body.style.cursor = 'auto'
@@ -157,15 +168,20 @@ function SceneContents({
 
   const backdropColor = isDark ? '#334155' : '#94a3b8'
   const floorColor = isDark ? '#0f172a' : '#e2e8f0'
+  const showFloor = domGlowRef ? isDark : true
 
   return (
     <Selection>
       <TransparentBackground />
-      <DomGlowTracker
-        domGlowRef={domGlowRef}
-        hoveredMeshRef={hoveredMeshRef}
-        bloomRadius={bloom.radius}
-      />
+      {domGlowRef ? (
+        <DomGlowTracker
+          domGlowRef={domGlowRef}
+          hoveredMeshRef={hoveredMeshRef}
+          bloomRadius={bloom.radius}
+          bloomIntensity={bloom.intensity}
+          isDark={isDark}
+        />
+      ) : null}
       <ambientLight intensity={isDark ? 0.35 : 0.55} />
       <directionalLight
         ref={keyLightRef}
@@ -174,10 +190,12 @@ function SceneContents({
       />
       <pointLight ref={fillLightRef} position={[-3, 2, 2]} intensity={0.6} />
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.76, 0]} receiveShadow>
-        <planeGeometry args={[12, 12]} />
-        <meshStandardMaterial color={floorColor} roughness={0.92} metalness={0.05} />
-      </mesh>
+      {showFloor ? (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.76, 0]} receiveShadow>
+          <planeGeometry args={[12, 12]} />
+          <meshStandardMaterial color={floorColor} roughness={0.92} metalness={0.05} />
+        </mesh>
+      ) : null}
 
       <mesh position={[0.85, 0, -1.35]} scale={[2.6, 2.6, 0.55]}>
         <boxGeometry />
@@ -192,13 +210,13 @@ function SceneContents({
         position={[-1.35, 0, 0.15]}
         color="#4fb8b2"
         hoverEmissive={bloom.hoverEmissive}
-        hoveredMeshRef={hoveredMeshRef}
+        hoveredMeshRef={domGlowRef ? hoveredMeshRef : undefined}
       />
       <InteractiveBloomBox
         position={[0.85, 0, 0.55]}
         color="#328f97"
         hoverEmissive={bloom.hoverEmissive}
-        hoveredMeshRef={hoveredMeshRef}
+        hoveredMeshRef={domGlowRef ? hoveredMeshRef : undefined}
       />
 
       <OrbitControls

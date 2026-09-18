@@ -37,6 +37,13 @@ export default function Header() {
           >
             Bloom
           </Link>
+          <Link
+            to="/bloom-webgl"
+            className="nav-link"
+            activeProps={{ className: 'nav-link is-active' }}
+          >
+            Bloom WebGL
+          </Link>
           <a
             href="https://tanstack.com/start/latest/docs/framework/react/overview"
             className="nav-link"

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as BloomRouteImport } from './routes/bloom'
+import { Route as BloomWebglRouteImport } from './routes/bloom-webgl'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const BloomRoute = BloomRouteImport.update({
   path: '/bloom',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BloomWebglRoute = BloomWebglRouteImport.update({
+  id: '/bloom-webgl',
+  path: '/bloom-webgl',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/bloom': typeof BloomRoute
+  '/bloom-webgl': typeof BloomWebglRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/bloom': typeof BloomRoute
+  '/bloom-webgl': typeof BloomWebglRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/bloom': typeof BloomRoute
+  '/bloom-webgl': typeof BloomWebglRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/bloom'
+  fullPaths: '/' | '/about' | '/bloom' | '/bloom-webgl'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/bloom'
-  id: '__root__' | '/' | '/about' | '/bloom'
+  to: '/' | '/about' | '/bloom' | '/bloom-webgl'
+  id: '__root__' | '/' | '/about' | '/bloom' | '/bloom-webgl'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   BloomRoute: typeof BloomRoute
+  BloomWebglRoute: typeof BloomWebglRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BloomRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bloom-webgl': {
+      id: '/bloom-webgl'
+      path: '/bloom-webgl'
+      fullPath: '/bloom-webgl'
+      preLoaderRoute: typeof BloomWebglRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   BloomRoute: BloomRoute,
+  BloomWebglRoute: BloomWebglRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

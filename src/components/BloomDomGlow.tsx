@@ -8,7 +8,9 @@ const BloomDomGlow = forwardRef<HTMLDivElement, BloomDomGlowProps>(function Bloo
   { isDark },
   ref,
 ) {
-  const glowColor = isDark ? 'rgba(250, 204, 21, 0.42)' : 'rgba(250, 204, 21, 0.58)'
+  const gradient = isDark
+    ? 'radial-gradient(circle, rgba(250, 204, 21, 0.55) 0%, rgba(250, 204, 21, 0.22) 38%, transparent var(--glow-falloff, 72%))'
+    : 'radial-gradient(circle, rgba(234, 179, 8, 0.92) 0%, rgba(250, 204, 21, 0.5) 32%, rgba(250, 204, 21, 0.18) 55%, transparent var(--glow-falloff, 78%))'
 
   return (
     <div
@@ -24,7 +26,7 @@ const BloomDomGlow = forwardRef<HTMLDivElement, BloomDomGlowProps>(function Bloo
           width: 'var(--glow-size, 280px)',
           height: 'var(--glow-size, 280px)',
           filter: 'blur(var(--glow-blur, 48px))',
-          background: `radial-gradient(circle, ${glowColor} 0%, transparent var(--glow-falloff, 70%))`,
+          background: gradient,
         }}
       />
     </div>
