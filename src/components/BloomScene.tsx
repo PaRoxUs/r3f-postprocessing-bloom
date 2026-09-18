@@ -1,5 +1,5 @@
 import { OrbitControls } from '@react-three/drei'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   EffectComposer,
   Select,
@@ -7,12 +7,14 @@ import {
   SelectiveBloom,
 } from '@react-three/postprocessing'
 import { Leva, useControls } from 'leva'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ColorRepresentation, DirectionalLight, PointLight } from 'three'
-import { Color } from 'three'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import type { ColorRepresentation, DirectionalLight, Mesh, PointLight } from 'three'
+import { bloomRadiusToDomCss } from '../lib/bloomDomSync'
+import { Color, Vector3 } from 'three'
 
-type BloomSceneProps = {
+export type BloomSceneProps = {
   isDark: boolean
+  domGlowRef?: RefObject<HTMLDivElement | null>
 }
 
 const BLOOM_COLOR = '#facc15'
@@ -28,29 +30,85 @@ function useBloomSettings() {
   })
 }
 
+function DomGlowTracker({
+  domGlowRef,
+  hoveredMeshRef,
+  bloomRadius,
+}: {
+  domGlowRef?: RefObject<HTMLDivElement | null>
+  hoveredMeshRef: RefObject<Mesh | null>
+  bloomRadius: number
+}) {
+  const worldPosition = useMemo(() => new Vector3(), [])
+  const wasVisible = useRef(false)
+
+  useFrame(({ camera }) => {
+    const glow = domGlowRef?.current
+    if (!glow) {
+      return
+    }
+
+    const { width, height } = glow.getBoundingClientRect()
+    const { size, blur, falloff } = bloomRadiusToDomCss(bloomRadius, width, height)
+    glow.style.setProperty('--glow-size', `${size}px`)
+    glow.style.setProperty('--glow-blur', `${blur}px`)
+    glow.style.setProperty('--glow-falloff', `${falloff}%`)
+
+    const mesh = hoveredMeshRef.current
+    if (!mesh) {
+      if (wasVisible.current) {
+        glow.style.opacity = '0'
+        wasVisible.current = false
+      }
+      return
+    }
+
+    mesh.getWorldPosition(worldPosition)
+    worldPosition.project(camera)
+
+    const x = (worldPosition.x * 0.5 + 0.5) * 100
+    const y = (-worldPosition.y * 0.5 + 0.5) * 100
+
+    glow.style.setProperty('--glow-x', `${x}%`)
+    glow.style.setProperty('--glow-y', `${y}%`)
+    glow.style.opacity = '1'
+    wasVisible.current = true
+  })
+
+  return null
+}
+
 function InteractiveBloomBox({
   position,
   color,
   hoverEmissive,
+  hoveredMeshRef,
 }: {
   position: [number, number, number]
   color: ColorRepresentation
   hoverEmissive: number
+  hoveredMeshRef: RefObject<Mesh | null>
 }) {
   const [hovered, setHovered] = useState(false)
+  const meshRef = useRef<Mesh>(null)
   const emissive = useMemo(() => new Color(BLOOM_COLOR), [])
 
   return (
     <Select enabled={hovered}>
       <mesh
+        ref={meshRef}
         position={position}
         onPointerOver={(event) => {
           event.stopPropagation()
           setHovered(true)
+          hoveredMeshRef.current = meshRef.current
           document.body.style.cursor = 'pointer'
         }}
         onPointerOut={() => {
           setHovered(false)
+          if (hoveredMeshRef.current === meshRef.current) {
+            hoveredMeshRef.current = null
+          }
           document.body.style.cursor = 'auto'
         }}
       >
@@ -80,9 +138,16 @@ function TransparentBackground() {
   return null
 }
 
-function SceneContents({ isDark }: { isDark: boolean }) {
+function SceneContents({
+  isDark,
+  domGlowRef,
+}: {
+  isDark: boolean
+  domGlowRef?: RefObject<HTMLDivElement | null>
+}) {
   const keyLightRef = useRef<DirectionalLight>(null!)
   const fillLightRef = useRef<PointLight>(null!)
+  const hoveredMeshRef = useRef<Mesh | null>(null)
   const bloom = useBloomSettings()
   const invalidate = useThree((state) => state.invalidate)
 
@@ -96,6 +161,11 @@ function SceneContents({ isDark }: { isDark: boolean }) {
   return (
     <Selection>
       <TransparentBackground />
+      <DomGlowTracker
+        domGlowRef={domGlowRef}
+        hoveredMeshRef={hoveredMeshRef}
+        bloomRadius={bloom.radius}
+      />
       <ambientLight intensity={isDark ? 0.35 : 0.55} />
       <directionalLight
         ref={keyLightRef}
@@ -122,11 +192,13 @@ function SceneContents({ isDark }: { isDark: boolean }) {
         position={[-1.35, 0, 0.15]}
         color="#4fb8b2"
         hoverEmissive={bloom.hoverEmissive}
+        hoveredMeshRef={hoveredMeshRef}
       />
       <InteractiveBloomBox
         position={[0.85, 0, 0.55]}
         color="#328f97"
         hoverEmissive={bloom.hoverEmissive}
+        hoveredMeshRef={hoveredMeshRef}
       />
 
       <OrbitControls
@@ -150,7 +222,7 @@ function SceneContents({ isDark }: { isDark: boolean }) {
   )
 }
 
-export default function BloomScene({ isDark }: BloomSceneProps) {
+export default function BloomScene({ isDark, domGlowRef }: BloomSceneProps) {
   return (
     <>
       <Leva
@@ -164,12 +236,12 @@ export default function BloomScene({ isDark }: BloomSceneProps) {
         camera={{ position: [0, 1.25, 5.5], fov: 42 }}
         dpr={[1, 2]}
         gl={{ antialias: false, alpha: true }}
-        className="h-full w-full touch-none bg-transparent"
+        className="relative h-full w-full touch-none bg-transparent"
         onCreated={({ gl }) => {
           gl.setClearColor(0x000000, 0)
         }}
       >
-        <SceneContents isDark={isDark} />
+        <SceneContents isDark={isDark} domGlowRef={domGlowRef} />
       </Canvas>
     </>
   )

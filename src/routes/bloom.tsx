@@ -1,6 +1,7 @@
 import { ClientOnly } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useRef, useState } from 'react'
+import BloomDomGlow from '../components/BloomDomGlow'
 import BloomThemeSwitcher from '../components/BloomThemeSwitcher'
 
 const BloomScene = lazy(() => import('../components/BloomScene'))
@@ -11,6 +12,7 @@ export const Route = createFileRoute('/bloom')({
 
 function BloomExamplePage() {
   const [isDark, setIsDark] = useState(false)
+  const domGlowRef = useRef<HTMLDivElement>(null)
   const onThemeChange = useCallback((theme: 'light' | 'dark') => {
     setIsDark(theme === 'dark')
   }, [])
@@ -22,9 +24,8 @@ function BloomExamplePage() {
           <p className="island-kicker mb-2">React Three Fiber</p>
           <h1 className="demo-title">Postprocessing bloom</h1>
           <p className="demo-muted mt-3 max-w-xl text-sm sm:text-base">
-            Hover the two front boxes to add them to selective bloom. Use the
-            Leva panel to tune intensity, threshold, and glow. The larger box
-            sits behind the right-hand box and stays matte.
+            Hover the two front boxes for selective WebGL bloom plus a CSS glow
+            on the panel behind the hovered box. Use Leva to tune the 3D bloom.
           </p>
         </div>
         <BloomThemeSwitcher onThemeChange={onThemeChange} />
@@ -34,12 +35,15 @@ function BloomExamplePage() {
         className="demo-panel overflow-hidden p-0 dark:border-teal-900/40 dark:bg-slate-950/40"
         aria-label="Bloom canvas"
       >
-        <div className="h-[min(70vh,520px)] w-full">
-          <ClientOnly fallback={<CanvasPlaceholder isDark={isDark} />}>
-            <Suspense fallback={<CanvasPlaceholder isDark={isDark} />}>
-              <BloomScene isDark={isDark} />
-            </Suspense>
-          </ClientOnly>
+        <div className="relative isolate h-[min(70vh,520px)] w-full">
+          <BloomDomGlow ref={domGlowRef} isDark={isDark} />
+          <div className="absolute inset-0 z-[1]">
+            <ClientOnly fallback={<CanvasPlaceholder isDark={isDark} />}>
+              <Suspense fallback={<CanvasPlaceholder isDark={isDark} />}>
+                <BloomScene isDark={isDark} domGlowRef={domGlowRef} />
+              </Suspense>
+            </ClientOnly>
+          </div>
         </div>
       </section>
 
