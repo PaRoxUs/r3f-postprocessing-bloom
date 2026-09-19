@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import { bloomColorToDomGradient, DEFAULT_BLOOM_COLOR } from '../lib/bloomDomSync'
 
 type BloomDomGlowProps = {
   isDark: boolean
@@ -8,9 +9,7 @@ const BloomDomGlow = forwardRef<HTMLDivElement, BloomDomGlowProps>(function Bloo
   { isDark },
   ref,
 ) {
-  const gradient = isDark
-    ? 'radial-gradient(circle, rgba(250, 204, 21, 0.55) 0%, rgba(250, 204, 21, 0.22) 38%, transparent var(--glow-falloff, 72%))'
-    : 'radial-gradient(circle, rgba(234, 179, 8, 0.92) 0%, rgba(250, 204, 21, 0.5) 32%, rgba(250, 204, 21, 0.18) 55%, transparent var(--glow-falloff, 78%))'
+  const fallbackGradient = bloomColorToDomGradient(DEFAULT_BLOOM_COLOR, isDark)
 
   return (
     <div
@@ -20,14 +19,17 @@ const BloomDomGlow = forwardRef<HTMLDivElement, BloomDomGlowProps>(function Bloo
     >
       <div
         className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full will-change-[left,top,opacity,filter,width,height]"
-        style={{
-          left: 'var(--glow-x, 50%)',
-          top: 'var(--glow-y, 50%)',
-          width: 'var(--glow-size, 280px)',
-          height: 'var(--glow-size, 280px)',
-          filter: 'blur(var(--glow-blur, 48px))',
-          background: gradient,
-        }}
+        style={
+          {
+            left: 'var(--glow-x, 50%)',
+            top: 'var(--glow-y, 50%)',
+            width: 'var(--glow-size, 280px)',
+            height: 'var(--glow-size, 280px)',
+            filter: 'blur(var(--glow-blur, 48px))',
+            background: 'var(--glow-gradient)',
+            ['--glow-gradient']: fallbackGradient,
+          } as React.CSSProperties
+        }
       />
     </div>
   )

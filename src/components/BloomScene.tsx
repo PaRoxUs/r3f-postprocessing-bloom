@@ -9,7 +9,13 @@ import {
 import { Leva, useControls } from 'leva'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { ColorRepresentation, DirectionalLight, Mesh, PointLight } from 'three'
-import { bloomIntensityToDomOpacity, bloomRadiusToDomCss } from '../lib/bloomDomSync'
+import {
+  bloomColorToDomGradient,
+  bloomIntensityToDomOpacity,
+  bloomRadiusToDomCss,
+  DEFAULT_BLOOM_COLOR,
+  normalizeBloomColor,
+} from '../lib/bloomDomSync'
 import { Color, Vector3 } from 'three'
 
 export type BloomSceneProps = {
@@ -17,10 +23,9 @@ export type BloomSceneProps = {
   domGlowRef?: RefObject<HTMLDivElement | null>
 }
 
-const BLOOM_COLOR = '#facc15'
-
 function useBloomSettings() {
   return useControls('Bloom', {
+    bloomColor: { value: DEFAULT_BLOOM_COLOR, label: 'Bloom color' },
     intensity: { value: 1.35, min: 0, max: 4, step: 0.01 },
     luminanceThreshold: { value: 0.15, min: 0, max: 1, step: 0.01 },
     luminanceSmoothing: { value: 0.35, min: 0, max: 1, step: 0.01 },
@@ -35,12 +40,14 @@ function DomGlowTracker({
   hoveredMeshRef,
   bloomRadius,
   bloomIntensity,
+  bloomColor,
   isDark,
 }: {
   domGlowRef?: RefObject<HTMLDivElement | null>
   hoveredMeshRef: RefObject<Mesh | null>
   bloomRadius: number
   bloomIntensity: number
+  bloomColor: string
   isDark: boolean
 }) {
   const worldPosition = useMemo(() => new Vector3(), [])
@@ -62,6 +69,7 @@ function DomGlowTracker({
     glow.style.setProperty('--glow-size', `${size}px`)
     glow.style.setProperty('--glow-blur', `${blur}px`)
     glow.style.setProperty('--glow-falloff', `${falloff}%`)
+    glow.style.setProperty('--glow-gradient', bloomColorToDomGradient(bloomColor, isDark))
 
     const mesh = hoveredMeshRef.current
     if (!mesh) {
@@ -91,16 +99,18 @@ function InteractiveBloomBox({
   position,
   color,
   hoverEmissive,
+  bloomColor,
   hoveredMeshRef,
 }: {
   position: [number, number, number]
   color: ColorRepresentation
   hoverEmissive: number
+  bloomColor: string
   hoveredMeshRef?: RefObject<Mesh | null>
 }) {
   const [hovered, setHovered] = useState(false)
   const meshRef = useRef<Mesh>(null)
-  const emissive = useMemo(() => new Color(BLOOM_COLOR), [])
+  const emissive = useMemo(() => new Color(bloomColor), [bloomColor])
 
   return (
     <Select enabled={hovered}>
@@ -166,6 +176,8 @@ function SceneContents({
     invalidate()
   }, [bloom, invalidate])
 
+  const bloomColor = normalizeBloomColor(bloom.bloomColor)
+
   const backdropColor = isDark ? '#334155' : '#94a3b8'
   const floorColor = isDark ? '#0f172a' : '#e2e8f0'
   const showFloor = true
@@ -179,6 +191,7 @@ function SceneContents({
           hoveredMeshRef={hoveredMeshRef}
           bloomRadius={bloom.radius}
           bloomIntensity={bloom.intensity}
+          bloomColor={bloomColor}
           isDark={isDark}
         />
       ) : null}
@@ -210,12 +223,14 @@ function SceneContents({
         position={[-1.35, 0, 0.15]}
         color="#4fb8b2"
         hoverEmissive={bloom.hoverEmissive}
+        bloomColor={bloomColor}
         hoveredMeshRef={domGlowRef ? hoveredMeshRef : undefined}
       />
       <InteractiveBloomBox
         position={[0.85, 0, 0.55]}
         color="#328f97"
         hoverEmissive={bloom.hoverEmissive}
+        bloomColor={bloomColor}
         hoveredMeshRef={domGlowRef ? hoveredMeshRef : undefined}
       />
 
