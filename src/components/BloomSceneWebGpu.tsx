@@ -221,8 +221,8 @@ function SceneContents({
   const hoveredMeshRef = useRef<Mesh | null>(null)
   const bloom = useBloomSettings()
   const invalidate = useThree((state) => state.invalidate)
-  // Mirrors hds effectiveStrictVoid: landing/CSS → void halos; chart canvas → strict only in light.
-  const strictTransparentVoid = domGlowRef ? false : !isDark
+  // Demo: void halos over transparent backdrop in both themes (hds chart light uses strict void).
+  const strictTransparentVoid = false
 
   const bloomSettings = useMemo<WebGpuBloomParams>(
     () => ({
