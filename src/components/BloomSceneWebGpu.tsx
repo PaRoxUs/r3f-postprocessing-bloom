@@ -73,10 +73,10 @@ function WebGpuBloomPipeline({
       pipeline = new RenderPipeline(renderer)
       // renderOutput unpremultiplies first — output premultiplied straight rgb + coverage alpha.
       pipeline.outputNode = Fn(() => {
-        const straightRgb = scenePassColor.rgb.add(bloomPass.rgb)
         const bloomAlpha = luminance(bloomPass.rgb)
-        // Blur tails are non-zero everywhere; gate alpha so clear areas stay transparent.
+        // Blur tails are non-zero everywhere; gate bloom rgb and alpha together (alpha-only = black haze).
         const bloomCoverage = smoothstep(float(0.004), float(0.028), bloomAlpha)
+        const straightRgb = scenePassColor.rgb.add(bloomPass.rgb.mul(bloomCoverage))
         const alpha = max(scenePassColor.a, bloomCoverage).clamp(0, 1)
         return vec4(straightRgb.mul(alpha), alpha)
       })()
@@ -214,6 +214,7 @@ function TransparentBackground() {
     scene.background = null
     if (!isLegacy) {
       renderer.setClearColor(0x000000, 0)
+      renderer.setClearAlpha(0)
     }
   }, [isLegacy, renderer, scene])
 
@@ -317,6 +318,7 @@ export default function BloomSceneWebGpu({ isDark, domGlowRef }: BloomSceneWebGp
         onCreated={({ renderer, isLegacy }) => {
           if (!isLegacy) {
             renderer.setClearColor(0x000000, 0)
+            renderer.setClearAlpha(0)
           }
         }}
       >
