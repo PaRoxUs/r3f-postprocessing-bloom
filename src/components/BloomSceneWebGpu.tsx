@@ -2,8 +2,7 @@ import { OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Leva, useControls } from 'leva'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { bloom } from 'three/addons/tsl/display/BloomNode.js'
-import { Fn, emissive, float, luminance, max, mrt, output, pass, smoothstep, vec4 } from 'three/tsl'
+import { emissive, mrt, output, pass } from 'three/tsl'
 import { Color, RenderPipeline, Vector3 } from 'three/webgpu'
 import type { ColorRepresentation, Mesh } from 'three/webgpu'
 import {
@@ -14,6 +13,11 @@ import {
   DEFAULT_BLOOM_COLOR,
   normalizeBloomColor,
 } from '../lib/bloomDomSync'
+import {
+  applyWebGpuBloomOutput,
+  applyWebGpuChartClear,
+  type WebGpuBloomParams,
+} from '../lib/webgpuFirmamentBloom'
 
 export type BloomSceneWebGpuProps = {
   isDark: boolean
@@ -37,15 +41,11 @@ function useBloomSettings() {
 }
 
 function WebGpuBloomPipeline({
-  intensity,
-  radius,
-  threshold,
-  smoothing,
+  bloomSettings,
+  strictTransparentVoid,
 }: {
-  intensity: number
-  radius: number
-  threshold: number
-  smoothing: number
+  bloomSettings: WebGpuBloomParams
+  strictTransparentVoid: boolean
 }) {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
@@ -65,22 +65,15 @@ function WebGpuBloomPipeline({
       const scenePass = pass(scene, camera)
       scenePass.setMRT(mrt({ output, emissive }))
 
-      const scenePassColor = scenePass.getTextureNode('output')
-      const emissivePass = scenePass.getTextureNode('emissive')
-      const bloomPass = bloom(emissivePass, intensity, radius, threshold)
-      bloomPass.smoothWidth.value = smoothing
-
       pipeline = new RenderPipeline(renderer)
-      // renderOutput unpremultiplies first — output premultiplied straight rgb + coverage alpha.
-      pipeline.outputNode = Fn(() => {
-        const bloomAlpha = luminance(bloomPass.rgb)
-        // Blur tails are non-zero everywhere; gate bloom rgb and alpha together (alpha-only = black haze).
-        const bloomCoverage = smoothstep(float(0.004), float(0.028), bloomAlpha)
-        const straightRgb = scenePassColor.rgb.add(bloomPass.rgb.mul(bloomCoverage))
-        const alpha = max(scenePassColor.a, bloomCoverage).clamp(0, 1)
-        return vec4(straightRgb.mul(alpha), alpha)
-      })()
-      pipeline.needsUpdate = true
+      applyWebGpuBloomOutput(
+        pipeline,
+        scenePass,
+        true,
+        true,
+        strictTransparentVoid,
+        bloomSettings,
+      )
 
       set({ renderPipeline: pipeline })
     }
@@ -92,7 +85,7 @@ function WebGpuBloomPipeline({
       set({ renderPipeline: null })
       pipeline?.dispose()
     }
-  }, [camera, intensity, isLegacy, radius, renderer, scene, set, smoothing, threshold])
+  }, [bloomSettings, camera, isLegacy, renderer, scene, set, strictTransparentVoid])
 
   return null
 }
@@ -205,17 +198,14 @@ function InteractiveBloomBox({
   )
 }
 
-function TransparentBackground() {
+function ChartBackdropSync() {
   const scene = useThree((state) => state.scene)
   const renderer = useThree((state) => state.renderer)
   const isLegacy = useThree((state) => state.isLegacy)
 
-  useEffect(() => {
-    scene.background = null
-    if (!isLegacy) {
-      renderer.setClearColor(0x000000, 0)
-      renderer.setClearAlpha(0)
-    }
+  useLayoutEffect(() => {
+    if (!scene || !renderer) return
+    applyWebGpuChartClear(renderer, scene, isLegacy, renderer.domElement)
   }, [isLegacy, renderer, scene])
 
   return null
@@ -231,6 +221,18 @@ function SceneContents({
   const hoveredMeshRef = useRef<Mesh | null>(null)
   const bloom = useBloomSettings()
   const invalidate = useThree((state) => state.invalidate)
+  // Mirrors hds effectiveStrictVoid: landing/CSS → void halos; chart canvas → strict only in light.
+  const strictTransparentVoid = domGlowRef ? false : !isDark
+
+  const bloomSettings = useMemo<WebGpuBloomParams>(
+    () => ({
+      intensity: bloom.intensity,
+      radius: bloom.radius,
+      luminanceThreshold: bloom.luminanceThreshold,
+      luminanceSmoothing: bloom.luminanceSmoothing,
+    }),
+    [bloom.intensity, bloom.luminanceSmoothing, bloom.luminanceThreshold, bloom.radius],
+  )
 
   useEffect(() => {
     invalidate()
@@ -244,12 +246,10 @@ function SceneContents({
 
   return (
     <>
-      <TransparentBackground />
+      <ChartBackdropSync />
       <WebGpuBloomPipeline
-        intensity={bloom.intensity}
-        radius={bloom.radius}
-        threshold={bloom.luminanceThreshold}
-        smoothing={bloom.luminanceSmoothing}
+        bloomSettings={bloomSettings}
+        strictTransparentVoid={strictTransparentVoid}
       />
       {domGlowRef ? (
         <DomGlowTracker
@@ -315,11 +315,8 @@ export default function BloomSceneWebGpu({ isDark, domGlowRef }: BloomSceneWebGp
         dpr={[1, 2]}
         renderer={{ antialias: false, alpha: true }}
         className="relative h-full w-full touch-none bg-transparent"
-        onCreated={({ renderer, isLegacy }) => {
-          if (!isLegacy) {
-            renderer.setClearColor(0x000000, 0)
-            renderer.setClearAlpha(0)
-          }
+        onCreated={({ renderer, scene, isLegacy }) => {
+          applyWebGpuChartClear(renderer, scene, isLegacy, renderer.domElement)
         }}
       >
         <SceneContents isDark={isDark} domGlowRef={domGlowRef} />
