@@ -43,9 +43,11 @@ function useBloomSettings() {
 function WebGpuBloomPipeline({
   bloomSettings,
   strictTransparentVoid,
+  lightBackdrop,
 }: {
   bloomSettings: WebGpuBloomParams
   strictTransparentVoid: boolean
+  lightBackdrop: boolean
 }) {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
@@ -73,6 +75,7 @@ function WebGpuBloomPipeline({
         true,
         strictTransparentVoid,
         bloomSettings,
+        lightBackdrop,
       )
 
       set({ renderPipeline: pipeline })
@@ -85,7 +88,7 @@ function WebGpuBloomPipeline({
       set({ renderPipeline: null })
       pipeline?.dispose()
     }
-  }, [bloomSettings, camera, isLegacy, renderer, scene, set, strictTransparentVoid])
+  }, [bloomSettings, camera, isLegacy, lightBackdrop, renderer, scene, set, strictTransparentVoid])
 
   return null
 }
@@ -250,6 +253,7 @@ function SceneContents({
       <WebGpuBloomPipeline
         bloomSettings={bloomSettings}
         strictTransparentVoid={strictTransparentVoid}
+        lightBackdrop={!isDark}
       />
       {domGlowRef ? (
         <DomGlowTracker

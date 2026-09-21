@@ -19,3 +19,7 @@ _Avoid_: clipping bloom at mesh edges, disabling bloom
 **Backdrop void**:
 The flat color or layer behind the WebGPU canvas (page chrome, landing void color, or CSS panel glow). Not part of the bloom shader.
 _Avoid_: scene.background, bloom source
+
+**Dark veil**:
+A gray or dark haze in the bloom blur tail when dim premultiplied pixels composite over a light backdrop. Distinct from the bright halo; controlled by void luminance gates, not bloom radius alone.
+_Avoid_: clipping bloom, starfield dimming, CSS glow bleed
